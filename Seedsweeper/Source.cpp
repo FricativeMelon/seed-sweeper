@@ -3,6 +3,18 @@
 #include <random>
 #include <unordered_set>
 
+template <typename T>
+void add_to_process_list(std::vector<T>* v,
+	std::unordered_set<T>* s,
+	T ele)
+{
+	if (s->count(ele) == 0)
+	{
+		s->insert(ele);
+		v->push_back(ele);
+	}
+}
+
 // Override base class with your custom functionality
 class SeedGame : public olc::PixelGameEngine
 {
@@ -45,11 +57,9 @@ protected:
 		return 0;
 	}
 
-	int AdjacientMines(olc::vi2d p)
+	int AdjacientMines(int i, int j)
 	{
 		int count = 0;
-		int i = p.x;
-		int j = p.y;
 		count += Get(i + 1, j + 1);
 		count += Get(i + 1, j);
 		count += Get(i + 1, j - 1);
@@ -61,25 +71,40 @@ protected:
 		return count;
 	}
 
-	void FloodMineless(int i, int j)
+	void AddToProcessList(std::vector<int>* v,
+		std::unordered_set<int>* s,
+		int ele)
 	{
-		//std::unordered_set<olc::vi2d> seen;
-		std::vector<olc::vi2d> v;
-		//seen.insert({ i, j });
-		v.push_back({ i, j });
+		if (ele >= 0 && ele < vGridDim.x * vGridDim.y)
+		{
+			add_to_process_list(v, s, ele);
+		}
+	}
+
+	void FloodMineless(int index)
+	{
+		std::unordered_set<int> seen;
+		std::vector<int> v;
+		seen.insert(index);
+		v.push_back(index);
 		while (v.size() > 0)
 		{
-			olc::vi2d item = v.back();
+			int item = v.back();
 			v.pop_back();
-			int count = AdjacientMines(item);
-			int index = item.y * vGridDim.x + item.x;
+			int i = item % vGridDim.x;
+			int j = item / vGridDim.x;
+			int count = AdjacientMines(i, j);
 			if (count > 0)
 			{
-				aBlocks[index].second = 3 + count;
+				aBlocks[item].second = 3 + count;
 			}
 			else
 			{
-				aBlocks[index].second = 1;
+				aBlocks[item].second = 1;
+				AddToProcessList(&v, &seen, item + vGridDim.x);
+				AddToProcessList(&v, &seen, item - vGridDim.x);
+				AddToProcessList(&v, &seen, item + 1);
+				AddToProcessList(&v, &seen, item - 1);
 			}
 		}
 	}
@@ -94,7 +119,7 @@ protected:
 		case 0:
 			if (p.first == 0)
 			{
-				FloodMineless(i, j);
+				FloodMineless(index);
 			}
 			else
 			{

@@ -36,6 +36,54 @@ protected:
 		}
 	}
 
+	int Get(int i, int j)
+	{
+		if (i >= 0 && j >= 0 && i < vGridDim.x && j < vGridDim.y)
+		{
+			return aBlocks[j * vGridDim.x + i].first;
+		}
+		return 0;
+	}
+
+	int AdjacientMines(olc::vi2d p)
+	{
+		int count = 0;
+		int i = p.x;
+		int j = p.y;
+		count += Get(i + 1, j + 1);
+		count += Get(i + 1, j);
+		count += Get(i + 1, j - 1);
+		count += Get(i, j + 1);
+		count += Get(i, j - 1);
+		count += Get(i - 1, j + 1);
+		count += Get(i - 1, j);
+		count += Get(i - 1, j - 1);
+		return count;
+	}
+
+	void FloodMineless(int i, int j)
+	{
+		//std::unordered_set<olc::vi2d> seen;
+		std::vector<olc::vi2d> v;
+		//seen.insert({ i, j });
+		v.push_back({ i, j });
+		while (v.size() > 0)
+		{
+			olc::vi2d item = v.back();
+			v.pop_back();
+			int count = AdjacientMines(item);
+			int index = item.y * vGridDim.x + item.x;
+			if (count > 0)
+			{
+				aBlocks[index].second = 3 + count;
+			}
+			else
+			{
+				aBlocks[index].second = 1;
+			}
+		}
+	}
+
 	void ClickGrid(int i, int j, int button)
 	{
 		int index = j * vGridDim.x + i;
@@ -46,7 +94,7 @@ protected:
 		case 0:
 			if (p.first == 0)
 			{
-				aBlocks[index].second = 1;
+				FloodMineless(i, j);
 			}
 			else
 			{
@@ -81,7 +129,7 @@ public:
 	SeedGame()
 	{
 		// Name your application
-		iMineCount = 20;
+		iMineCount = 40;
 		sAppName = "SeedGame";
 	}
 

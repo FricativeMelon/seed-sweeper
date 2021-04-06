@@ -1,5 +1,7 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
+#include <random>
+#include <unordered_set>
 
 // Override base class with your custom functionality
 class SeedGame : public olc::PixelGameEngine
@@ -10,10 +12,12 @@ private:
 	olc::vi2d vBlockSize = { 32,32 };
 	olc::vi2d vGridDim = { 20,15 };
 	std::unique_ptr<olc::Sprite> sprTile;
-	std::unique_ptr<int[]> aBlocks;
+	std::unique_ptr<std::pair<int, int>[]> aBlocks;
 	olc::vi2d vBlockOrigin = { 32,32 };
+	int iMineCount;
 
 protected:
+
 	void DrawSquare(int i, int j, int kind)
 	{
 		DrawPartialSprite(vBlockOrigin + olc::vi2d(i, j) * vBlockSize, 
@@ -27,7 +31,7 @@ protected:
 		{
 			for (int x = 0; x < vGridDim.x; x++)
 			{
-				DrawSquare(x, y, aBlocks[y * vGridDim.x + x]);
+				DrawSquare(x, y, aBlocks[y * vGridDim.x + x].second);
 			}
 		}
 	}
@@ -35,17 +39,25 @@ protected:
 	void ClickGrid(int i, int j, int button)
 	{
 		int index = j * vGridDim.x + i;
-		int val = aBlocks[index];
+		std::pair<int, int> p = aBlocks[index];
+		int val = p.second;
 		switch (button + val * 3)
 		{
 		case 0:
-			aBlocks[index] = 1;
+			if (p.first == 0)
+			{
+				aBlocks[index].second = 1;
+			}
+			else
+			{
+				aBlocks[index].second = 2;
+			}
 			break;
 		case 1:
-			aBlocks[index] = 3;
+			aBlocks[index].second = 3;
 			break;
 		case 10:
-			aBlocks[index] = 0;
+			aBlocks[index].second = 0;
 			break;
 		}
 	}
@@ -69,6 +81,7 @@ public:
 	SeedGame()
 	{
 		// Name your application
+		iMineCount = 20;
 		sAppName = "SeedGame";
 	}
 
@@ -77,7 +90,25 @@ public:
 	{
 		// Called once at the start, so create things here
 		sprTile = std::make_unique<olc::Sprite>("./gfx/square_32.png");
-		aBlocks = std::make_unique<int[]>(vGridDim.x * vGridDim.y);
+		int total = vGridDim.x * vGridDim.y;
+		aBlocks = std::make_unique<std::pair<int, int>[]>(total);
+		std::mt19937 gen(time(NULL));
+		std::unordered_set<int> elems;
+		for (int r = total - iMineCount; r < total; ++r) {
+			int v = std::uniform_int_distribution<>(1, r)(gen);
+
+			// there are two cases.
+			// v is not in candidates ==> add it
+			// v is in candidates ==> well, r is definitely not, because
+			// this is the first iteration in the loop that we could've
+			// picked something that big.
+
+			if (!elems.insert(v).second) {
+				v = r;
+				elems.insert(v);
+			}
+			aBlocks[v] = { 1, 0 };
+		}
 		return true;
 	}
 

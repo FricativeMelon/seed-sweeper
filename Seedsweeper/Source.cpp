@@ -3,17 +3,9 @@
 #include <random>
 #include <unordered_set>
 
-template <typename T>
-void add_to_process_list(std::vector<T>* v,
-	std::unordered_set<T>* s,
-	T ele)
-{
-	if (s->count(ele) == 0)
-	{
-		s->insert(ele);
-		v->push_back(ele);
-	}
-}
+olc::vi2d dirs8[8] =
+{ {1, 1}, {1, 0}, {1, -1}, {0, 1}, 
+  {0, -1}, {-1, 1}, {-1, 0}, {-1, -1} };
 
 // Override base class with your custom functionality
 class SeedGame : public olc::PixelGameEngine
@@ -48,6 +40,15 @@ protected:
 		}
 	}
 
+	int Index(int i, int j)
+	{
+		if (i >= 0 && j >= 0 && i < vGridDim.x && j < vGridDim.y)
+		{
+			return j * vGridDim.x + i;
+		}
+		return -1;
+	}
+
 	int Get(int i, int j)
 	{
 		if (i >= 0 && j >= 0 && i < vGridDim.x && j < vGridDim.y)
@@ -60,58 +61,48 @@ protected:
 	int AdjacientMines(int i, int j)
 	{
 		int count = 0;
-		count += Get(i + 1, j + 1);
-		count += Get(i + 1, j);
-		count += Get(i + 1, j - 1);
-		count += Get(i, j + 1);
-		count += Get(i, j - 1);
-		count += Get(i - 1, j + 1);
-		count += Get(i - 1, j);
-		count += Get(i - 1, j - 1);
+		for (int k = 0; k < 8; k++)
+		{
+			count += Get(i + dirs8[k].x, j + dirs8[k].y);
+		}
 		return count;
 	}
 
-	void AddToProcessList(std::vector<int>* v,
-		std::unordered_set<int>* s,
-		int ele)
-	{
-		if (ele >= 0 && ele < vGridDim.x * vGridDim.y)
-		{
-			add_to_process_list(v, s, ele);
-		}
-	}
-
-	void FloodMineless(int index)
+	void FloodMineless(olc::vi2d pos)
 	{
 		std::unordered_set<int> seen;
-		std::vector<int> v;
-		seen.insert(index);
-		v.push_back(index);
+		std::vector<olc::vi2d> v;
+		v.push_back(pos);
 		while (v.size() > 0)
 		{
-			int item = v.back();
+			olc::vi2d item = v.back();
 			v.pop_back();
-			int i = item % vGridDim.x;
-			int j = item / vGridDim.x;
-			int count = AdjacientMines(i, j);
+			int index = Index(item.x, item.y);
+			if (index < 0 || aBlocks[index].second != 0
+				|| seen.count(index) > 0)
+			{
+				continue;
+			}
+			seen.insert(index);
+			int count = AdjacientMines(item.x, item.y);
 			if (count > 0)
 			{
-				aBlocks[item].second = 3 + count;
+				aBlocks[index].second = 3 + count;
 			}
 			else
 			{
-				aBlocks[item].second = 1;
-				AddToProcessList(&v, &seen, item + vGridDim.x);
-				AddToProcessList(&v, &seen, item - vGridDim.x);
-				AddToProcessList(&v, &seen, item + 1);
-				AddToProcessList(&v, &seen, item - 1);
+				aBlocks[index].second = 1;
+				for (int k = 0; k < 8; k++)
+				{
+					v.push_back(item+dirs8[k]);
+				}
 			}
 		}
 	}
 
-	void ClickGrid(int i, int j, int button)
+	void ClickGrid(olc::vi2d pos, int button)
 	{
-		int index = j * vGridDim.x + i;
+		int index = pos.y * vGridDim.x + pos.x;
 		std::pair<int, int> p = aBlocks[index];
 		int val = p.second;
 		switch (button + val * 3)
@@ -119,7 +110,7 @@ protected:
 		case 0:
 			if (p.first == 0)
 			{
-				FloodMineless(index);
+				FloodMineless(pos);
 			}
 			else
 			{
@@ -145,7 +136,7 @@ protected:
 			j = j / vBlockSize.y;
 			if (i < vGridDim.x && j < vGridDim.y)
 			{
-				ClickGrid(i, j, button);
+				ClickGrid({i, j}, button);
 			}
 		}
 	}
